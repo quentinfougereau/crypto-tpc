@@ -1,4 +1,6 @@
-package Chiffrement;// -*- coding: utf-8 -*-
+package Chiffrement;// -*- coding: utf-8 -*-;
+
+import java.util.Arrays;
 
 public class Aes {
 
@@ -64,6 +66,8 @@ public class Aes {
         aes.chiffrer() ;
         System.out.println("Le bloc \"State\" en sortie vaut : ") ;
         aes.afficher_le_bloc(aes.State) ;
+
+        aes.Inv_SubBytes();
 	}
 
 	public void afficher_le_bloc(byte M[]) {
@@ -124,8 +128,10 @@ public class Aes {
         (byte)0x9B, (byte)0x1E, (byte)0x87, (byte)0xE9, (byte)0xCE, (byte)0x55, (byte)0x28, (byte)0xDF,
         (byte)0x8C, (byte)0xA1, (byte)0x89, (byte)0x0D, (byte)0xBF, (byte)0xE6, (byte)0x42, (byte)0x68,
         (byte)0x41, (byte)0x99, (byte)0x2D, (byte)0x0F, (byte)0xB0, (byte)0x54, (byte)0xBB, (byte)0x16};
-	
-	
+
+
+	/* Table de substitution inversée */
+    public int[] Inv_SBox = new int[256];
 
 	/* Fonction mystérieuse qui calcule le produit de deux octets */
 
@@ -193,6 +199,17 @@ public class Aes {
             System.out.printf("%02X ", b);
         }
         System.out.println();
+    }
+
+    public void Inv_SubBytes() {
+	    //System.arraycopy(SBox, 0, Inv_SBox, 0, SBox.length);
+	    for (int i = 0; i < SBox.length; i++) {
+	        Inv_SBox[i] = Byte.toUnsignedInt(SBox[i]);
+        }
+	    Arrays.sort(Inv_SBox);
+        System.out.println("Longueur de inv_sbox = " + Inv_SBox.length);
+        System.out.printf("%02X; ", Inv_SBox[0]);
+        System.out.printf("%02X; ", Inv_SBox[1]);
     }
 
 }
