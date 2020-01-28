@@ -44,9 +44,9 @@ public class Aes {
 
 	/* Le bloc à chiffrer aujourd'hui: 16 octets nuls */
 
-	public byte State[] = {
-        (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00,
-        (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00
+    public byte State[] = {
+            (byte)0x01, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00,
+            (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00
     };
 
 	/* Matrice utilisée pour la multiplication */
@@ -56,18 +56,32 @@ public class Aes {
             (byte)0x01, (byte)0x03, (byte)0x02, (byte)0x01, (byte)0x01, (byte)0x01, (byte)0x03, (byte)0x02
     };
 
+    public byte[] inv_matrix = {
+            (byte)0x0E, (byte)0x09, (byte)0x0D, (byte)0x0B, (byte)0x0B, (byte)0x0E, (byte)0x09, (byte)0x0D,
+            (byte)0x0D, (byte)0x0B, (byte)0x0E, (byte)0x09, (byte)0x09, (byte)0x0D, (byte)0x0B, (byte)0x0E
+    };
+
 
 	/* Programme principal */
 
 	public static void main(String args[]) {
 		Aes aes = new Aes() ;
+        System.out.println("------------ CHIFFREMENT ------------");
         System.out.println("Le bloc \"State\" en entrée vaut : ") ;
         aes.afficher_le_bloc(aes.State) ;
         aes.chiffrer() ;
         System.out.println("Le bloc \"State\" en sortie vaut : ") ;
         aes.afficher_le_bloc(aes.State) ;
 
-        aes.Inv_SubBytes();
+        aes.Create_Inv_SBox();
+
+        System.out.println();
+        System.out.println("------------ DECHIFFREMENT ------------");
+        System.out.println("Le bloc \"State\" en entrée vaut : ") ;
+        aes.afficher_le_bloc(aes.State) ;
+        aes.dechiffrer();
+        System.out.println("Le bloc \"State\" en sortie vaut : ") ;
+        aes.afficher_le_bloc(aes.State) ;
 	}
 
 	public void afficher_le_bloc(byte M[]) {
@@ -131,7 +145,7 @@ public class Aes {
 
 
 	/* Table de substitution inversée */
-    public int[] Inv_SBox = new int[256];
+    public byte[] Inv_SBox = new byte[256];
 
 	/* Fonction mystérieuse qui calcule le produit de deux octets */
 
@@ -201,18 +215,88 @@ public class Aes {
         System.out.println();
     }
 
-    public void Inv_SubBytes() {
-	    //System.arraycopy(SBox, 0, Inv_SBox, 0, SBox.length);
-	    for (int i = 0; i < SBox.length; i++) {
-	        Inv_SBox[i] = Byte.toUnsignedInt(SBox[i]);
+    public void Create_Inv_SBox() {
+	    byte tmp;
+        for (int i = 0; i < SBox.length; i++) {
+            /* The values of the integral types are integers in the following ranges : For byte, from -128 to 127, inclusive */
+            tmp = (byte) i;
+            if (tmp < 0) {
+                tmp = (byte) (i + 256);
+            }
+            int index = SBox[i];
+            if (index < 0) {
+                Inv_SBox[index + 256] = tmp;
+            } else {
+                Inv_SBox[index] = tmp;
+            }
         }
-	    Arrays.sort(Inv_SBox);
-        System.out.println("Longueur de inv_sbox = " + Inv_SBox.length);
-        System.out.printf("%02X; ", Inv_SBox[0]);
-        System.out.printf("%02X; ", Inv_SBox[1]);
+    }
+
+    public void Inv_SubBytes() {
+        for (int i = 0; i < State.length; i++) {
+            /* The values of the integral types are integers in the following ranges : For byte, from -128 to 127, inclusive */
+            if (State[i] < 0) {
+                State[i] = Inv_SBox[State[i] + 256];
+            } else {
+                State[i] = Inv_SBox[State[i]];
+            }
+        }
+
+    }
+
+
+
+    public void Inv_MixColumns() {
+        byte[] vector = new byte[4];
+        for (int i = 0; i < 4; i++) {
+            for (int k = 0; k < 4; k++) {
+                byte tmp = 0;
+                for (int j = 0; j < 4; j++) {
+                    tmp ^= gmul(State[4 * i + j], inv_matrix[4 * j + k]);
+                }
+                vector[k] = tmp;
+            }
+            System.arraycopy(vector, 0, State, 4 * i, 4);
+        }
+    }
+
+    public void Inv_ShiftRows() {
+        int length = State.length;
+        byte[] res = new byte[length];
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                res[4 * j + i] = State[Math.floorMod((4 * j + i) - (4 * i), length)];
+            }
+        }
+        System.arraycopy(res, 0, State, 0, length);
+    }
+
+    public void dechiffrer(){
+        AddRoundKey(Nr);
+        for (int i = Nr - 1; i > 0; i--) {
+            Inv_ShiftRows();
+            Inv_SubBytes();
+            AddRoundKey(i);
+            Inv_MixColumns();
+        }
+        Inv_ShiftRows();
+        Inv_SubBytes();
+        AddRoundKey(0);
     }
 
 }
+
+/*
+ public byte State[] = {
+        (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00,
+        (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00
+    };
+
+    public byte State[] = {
+        (byte)0xA0, (byte)0xB1, (byte)0xC2, (byte)0xD3, (byte)0xA1, (byte)0xB2, (byte)0xC3, (byte)0xD0,
+        (byte)0xA2, (byte)0xB3, (byte)0xC0, (byte)0xD1, (byte)0xA3, (byte)0xB0, (byte)0xC1, (byte)0xD2
+    };
+ */
 
 /*
   $ make
