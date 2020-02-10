@@ -1,8 +1,6 @@
 package Chiffrement;// -*- coding: utf-8 -*-;
 
-import javax.crypto.Cipher;
 import java.io.*;
-import java.util.Arrays;
 
 public class Aes {
 
@@ -47,7 +45,7 @@ public class Aes {
 	/* Le bloc à chiffrer aujourd'hui: 16 octets nuls */
 
     public byte State[] = {
-            (byte)0x01, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00,
+            (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00,
             (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00
     };
 
@@ -90,20 +88,52 @@ public class Aes {
             (byte)0x10, (byte)0x10, (byte)0x10, (byte)0x10, (byte)0x10, (byte)0x10, (byte)0x10, (byte)0x10
     };
 
+    // Vecteur d'initialisation
+    byte iv[] = {
+            (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00,
+            (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00
+    };
+
 
 	/* Programme principal */
 
 	public static void main(String args[]) {
 
-		Aes aes = new Aes() ;
-		/*
+		Aes aes = new Aes();
         System.out.println("------------ CHIFFREMENT ------------");
+        /*
         System.out.println("Le bloc \"State\" en entrée vaut : ") ;
         aes.afficher_le_bloc(aes.State) ;
-        aes.chiffrer() ;
+         */
+        byte[] fileBytes = aes.pkcs5("./butokuden.jpg");
+        printBytes(fileBytes, 16);
+        byte[] cryptedFile = new byte[fileBytes.length];
+        for (int i = 0; i < fileBytes.length; i+=16) {
+            byte[] bloc = aes.getBloc(fileBytes, i, i + 15);
+            //byte[] bloc = aes.State;
+            bloc = xor(bloc, aes.iv);                                               // XOR avec le vecteur d'initialisation
+
+            bloc = aes.chiffrer(bloc);
+
+            System.arraycopy(bloc, 0, cryptedFile, i, bloc.length);
+
+            System.arraycopy(bloc, 0, aes.iv, 0, bloc.length);        // Nouveau vecteur d'initialisation
+            /*
+            printBytes(bloc);
+            printBytes(aes.iv);
+            break;
+             */
+        }
+
+        aes.writeBytesToFile(cryptedFile, "./cbc-secret.jpg");
+
+        /*
+        aes.chiffrer();
         System.out.println("Le bloc \"State\" en sortie vaut : ") ;
         aes.afficher_le_bloc(aes.State) ;
+         */
 
+        /*
         aes.Create_Inv_SBox();
 
         System.out.println();
@@ -113,13 +143,15 @@ public class Aes {
         aes.dechiffrer();
         System.out.println("Le bloc \"State\" en sortie vaut : ") ;
         aes.afficher_le_bloc(aes.State) ;
-	     */
+         */
 
+		/*
 		// Exercice C.3
 	    byte[] fileBytes = aes.pkcs5("./butokuden.jpg");
 	    printBytes(fileBytes);
         System.out.printf("LENGTH : " + fileBytes.length);
         aes.writeBytesToFile(fileBytes, "./pkcs5-butokuden.jpg");
+		 */
 	}
 
 	public void afficher_le_bloc(byte M[]) {
@@ -132,17 +164,18 @@ public class Aes {
         }
 	}
 
-	public void chiffrer(){
-        AddRoundKey(0);
+	public byte[] chiffrer(byte[] bloc) {
+        bloc = AddRoundKey(0, bloc);
         for (int i = 1; i < Nr; i++) {
-            SubBytes();
-            ShiftRows();
-            MixColumns();
-            AddRoundKey(i);
+            bloc = SubBytes(bloc);
+            bloc = ShiftRows(bloc);
+            bloc = MixColumns(bloc);
+            bloc = AddRoundKey(i, bloc);
         }
-        SubBytes();
-        ShiftRows();
-        AddRoundKey(Nr);
+        bloc = SubBytes(bloc);
+        bloc = ShiftRows(bloc);
+        bloc = AddRoundKey(Nr, bloc);
+        return bloc;
 	}
 
 	/* Table de substitution déjà utilisée lors du TP précédent */
@@ -204,51 +237,62 @@ public class Aes {
 
 	/* Partie à compléter pour ce TP */
 
-	public void SubBytes() {
-        for (int i = 0; i < State.length; i++) {
+	public byte[] SubBytes(byte[] bloc) {
+        for (int i = 0; i < bloc.length; i++) {
             /* The values of the integral types are integers in the following ranges : For byte, from -128 to 127, inclusive */
-            if (State[i] < 0) {
-                State[i] = SBox[State[i] + 256];
+            if (bloc[i] < 0) {
+                bloc[i] = SBox[bloc[i] + 256];
             } else {
-                State[i] = SBox[State[i]];
+                bloc[i] = SBox[bloc[i]];
             }
         }
+        return bloc;
     }
 	
-	public void ShiftRows() {
-        int length = State.length;
+	public byte[] ShiftRows(byte[] bloc) {
+        int length = bloc.length;
         byte[] res = new byte[length];
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 4; j++) {
-                res[4 * j + i] = State[((4 * j + i) + (4 * i)) % length];
+                res[4 * j + i] = bloc[((4 * j + i) + (4 * i)) % length];
             }
         }
-        System.arraycopy(res, 0, State, 0, length);
+        System.arraycopy(res, 0, bloc, 0, length);
+        return bloc;
     }
 	
-	public void MixColumns() {
+	public byte[] MixColumns(byte[] bloc) {
 	    byte[] vector = new byte[4];
         for (int i = 0; i < 4; i++) {
             for (int k = 0; k < 4; k++) {
                 byte tmp = 0;
                 for (int j = 0; j < 4; j++) {
-                    tmp ^= gmul(State[4 * i + j], matrix[4 * j + k]);
+                    tmp ^= gmul(bloc[4 * i + j], matrix[4 * j + k]);
                 }
                 vector[k] = tmp;
             }
-            System.arraycopy(vector, 0, State, 4 * i, 4);
+            System.arraycopy(vector, 0, bloc, 4 * i, 4);
         }
+        return bloc;
     }
 	
-	public void AddRoundKey(int r) {
-	    for (int i = 0; i < State.length; i++) {
-	        State[i] = (byte) (State[i] ^ W[longueur_de_la_clef * r + i]);
+	public byte[] AddRoundKey(int r, byte[] bloc) {
+	    for (int i = 0; i < bloc.length; i++) {
+            bloc[i] = (byte) (bloc[i] ^ W[longueur_de_la_clef * r + i]);
         }
+	    return bloc;
     }
 
     public static void printBytes(byte[] bytes) {
         for (byte b : bytes) {
             System.out.printf("%02X ", b);
+        }
+        System.out.println();
+    }
+
+    public static void printBytes(byte[] bytes, int length) {
+        for (int i = 0; i < length; i++) {
+            System.out.printf("%02X ", bytes[i]);
         }
         System.out.println();
     }
@@ -309,17 +353,17 @@ public class Aes {
         System.arraycopy(res, 0, State, 0, length);
     }
 
-    public void dechiffrer(){
-        AddRoundKey(Nr);
+    public void dechiffrer(byte[] bloc){
+        AddRoundKey(Nr, bloc);
         for (int i = Nr - 1; i > 0; i--) {
             Inv_ShiftRows();
             Inv_SubBytes();
-            AddRoundKey(i);
+            AddRoundKey(i, bloc);
             Inv_MixColumns();
         }
         Inv_ShiftRows();
         Inv_SubBytes();
-        AddRoundKey(0);
+        AddRoundKey(0, bloc);
     }
 
     public byte[] pkcs5(String filename) {
@@ -347,6 +391,25 @@ public class Aes {
             e.printStackTrace();
         }
         return outputStream.toByteArray();
+    }
+
+    public byte[] getBloc(byte[] bytes, int debut, int fin) {
+	    byte[] res = new byte[(fin - debut) + 1];
+        if (fin - debut >= 0) System.arraycopy(bytes, debut, res, 0, (fin - debut) + 1);
+        return res;
+    }
+
+    /*
+    Effectue l'opération xor entre deux tableaux d'octets de même taille
+    */
+    public static byte[] xor(byte[] op1, byte[] op2) {
+        byte[] res = new byte[op1.length];
+        if (op1.length == op2.length) {
+            for (int i = 0; i < op1.length; i++) {
+                res[i] = (byte) (op1[i] ^ op2[i]);
+            }
+        }
+        return res;
     }
 
     public void inv_pkcs5(String filename) {
