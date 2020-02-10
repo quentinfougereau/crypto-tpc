@@ -1,5 +1,7 @@
 package Chiffrement;// -*- coding: utf-8 -*-;
 
+import javax.crypto.Cipher;
+import java.io.*;
 import java.util.Arrays;
 
 public class Aes {
@@ -61,11 +63,40 @@ public class Aes {
             (byte)0x0D, (byte)0x0B, (byte)0x0E, (byte)0x09, (byte)0x09, (byte)0x0D, (byte)0x0B, (byte)0x0E
     };
 
+    public byte[] padding_array = {
+            (byte)0x01,
+            (byte)0x02, (byte)0x02,
+            (byte)0x03, (byte)0x03, (byte)0x03,
+            (byte)0x04, (byte)0x04, (byte)0x04, (byte)0x04,
+            (byte)0x05, (byte)0x05, (byte)0x05, (byte)0x05, (byte)0x05,
+            (byte)0x06, (byte)0x06, (byte)0x06, (byte)0x06, (byte)0x06, (byte)0x06,
+            (byte)0x07, (byte)0x07, (byte)0x07, (byte)0x07, (byte)0x07, (byte)0x07, (byte)0x07,
+            (byte)0x08, (byte)0x08, (byte)0x08, (byte)0x08, (byte)0x08, (byte)0x08, (byte)0x08, (byte)0x08,
+            (byte)0x09, (byte)0x09, (byte)0x09, (byte)0x09, (byte)0x09, (byte)0x09, (byte)0x09, (byte)0x09,
+            (byte)0x09,
+            (byte)0x0A, (byte)0x0A, (byte)0x0A, (byte)0x0A, (byte)0x0A, (byte)0x0A, (byte)0x0A, (byte)0x0A,
+            (byte)0x0A, (byte)0x0A,
+            (byte)0x0B, (byte)0x0B,  (byte)0x0B, (byte)0x0B, (byte)0x0B, (byte)0x0B,  (byte)0x0B, (byte)0x0B,
+            (byte)0x0B,  (byte)0x0B, (byte)0x0B,
+            (byte)0x0C, (byte)0x0C, (byte)0x0C, (byte)0x0C, (byte)0x0C, (byte)0x0C, (byte)0x0C, (byte)0x0C,
+            (byte)0x0C, (byte)0x0C, (byte)0x0C, (byte)0x0C,
+            (byte)0x0D, (byte)0x0D, (byte)0x0D, (byte)0x0D, (byte)0x0D, (byte)0x0D, (byte)0x0D, (byte)0x0D,
+            (byte)0x0D, (byte)0x0D, (byte)0x0D, (byte)0x0D, (byte)0x0D,
+            (byte)0x0E, (byte)0x0E, (byte)0x0E, (byte)0x0E, (byte)0x0E, (byte)0x0E, (byte)0x0E, (byte)0x0E,
+            (byte)0x0E, (byte)0x0E, (byte)0x0E, (byte)0x0E, (byte)0x0E, (byte)0x0E,
+            (byte)0X0F, (byte)0X0F, (byte)0X0F, (byte)0X0F, (byte)0X0F, (byte)0X0F, (byte)0X0F, (byte)0X0F,
+            (byte)0X0F, (byte)0X0F, (byte)0X0F, (byte)0X0F, (byte)0X0F, (byte)0X0F, (byte)0X0F,
+            (byte)0x10, (byte)0x10, (byte)0x10, (byte)0x10, (byte)0x10, (byte)0x10, (byte)0x10, (byte)0x10,
+            (byte)0x10, (byte)0x10, (byte)0x10, (byte)0x10, (byte)0x10, (byte)0x10, (byte)0x10, (byte)0x10
+    };
+
 
 	/* Programme principal */
 
 	public static void main(String args[]) {
+
 		Aes aes = new Aes() ;
+		/*
         System.out.println("------------ CHIFFREMENT ------------");
         System.out.println("Le bloc \"State\" en entrée vaut : ") ;
         aes.afficher_le_bloc(aes.State) ;
@@ -82,6 +113,13 @@ public class Aes {
         aes.dechiffrer();
         System.out.println("Le bloc \"State\" en sortie vaut : ") ;
         aes.afficher_le_bloc(aes.State) ;
+	     */
+
+		// Exercice C.3
+	    byte[] fileBytes = aes.pkcs5("./butokuden.jpg");
+	    printBytes(fileBytes);
+        System.out.printf("LENGTH : " + fileBytes.length);
+        aes.writeBytesToFile(fileBytes, "./pkcs5-butokuden.jpg");
 	}
 
 	public void afficher_le_bloc(byte M[]) {
@@ -282,6 +320,47 @@ public class Aes {
         Inv_ShiftRows();
         Inv_SubBytes();
         AddRoundKey(0);
+    }
+
+    public byte[] pkcs5(String filename) {
+        byte[] buffer = new byte[1024];
+        int nbBytesRead;
+        FileInputStream fis = null;
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        try {
+            fis = new FileInputStream(filename);
+            while ((nbBytesRead = fis.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, nbBytesRead);
+            }
+            int k = 16;
+            int remainder = outputStream.size() % k;
+            int index = 0;
+
+            for (int i = 0; i < k - remainder; i++) {
+                index += i;
+            }
+
+            outputStream.write(padding_array, index, k - remainder);
+            outputStream.close();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return outputStream.toByteArray();
+    }
+
+    public void inv_pkcs5(String filename) {
+        /* TODO */
+    }
+
+    public void writeBytesToFile(byte[] bytes, String output) {
+        FileOutputStream fos = null;
+        try {
+            fos = new FileOutputStream(output);
+            fos.write(bytes, 0, bytes.length);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 }
