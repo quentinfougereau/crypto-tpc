@@ -107,27 +107,20 @@ public class Aes {
         aes.afficher_le_bloc(aes.State) ;
          */
         byte[] fileBytes = aes.pkcs5("./butokuden.jpg");
-        printBytes(fileBytes, 16);
         byte[] cryptedFile = new byte[fileBytes.length];
         byte[] randomIv = aes.generateRandomIv(16);
-        aes.iv = randomIv;
+        System.arraycopy(randomIv, 0, aes.iv, 0, aes.iv.length);
         for (int i = 0; i < fileBytes.length; i+=16) {
             byte[] bloc = aes.getBloc(fileBytes, i, i + 15);
             //byte[] bloc = aes.State;
             bloc = xor(bloc, aes.iv);                                               // XOR avec le vecteur d'initialisation
-
             bloc = aes.chiffrer(bloc);
-
             System.arraycopy(bloc, 0, cryptedFile, i, bloc.length);
+            System.arraycopy(bloc, 0, aes.iv, 0, bloc.length);       // Nouveau vecteur d'initialisation
 
-            System.arraycopy(bloc, 0, aes.iv, 0, bloc.length);        // Nouveau vecteur d'initialisation
-            /*
-            printBytes(bloc);
-            printBytes(aes.iv);
-            break;
-             */
         }
-
+        System.out.printf("Vecteur d'initialisation : ");
+        printBytes(randomIv);
         cryptedFile = aes.addRandomIv(cryptedFile, randomIv);
         aes.writeBytesToFile(cryptedFile, "./cbc-secret.jpg");
 
