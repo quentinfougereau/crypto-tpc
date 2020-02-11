@@ -1,6 +1,7 @@
 package Chiffrement;// -*- coding: utf-8 -*-;
 
 import java.io.*;
+import java.util.Random;
 
 public class Aes {
 
@@ -108,6 +109,8 @@ public class Aes {
         byte[] fileBytes = aes.pkcs5("./butokuden.jpg");
         printBytes(fileBytes, 16);
         byte[] cryptedFile = new byte[fileBytes.length];
+        byte[] randomIv = aes.generateRandomIv(16);
+        aes.iv = randomIv;
         for (int i = 0; i < fileBytes.length; i+=16) {
             byte[] bloc = aes.getBloc(fileBytes, i, i + 15);
             //byte[] bloc = aes.State;
@@ -125,6 +128,7 @@ public class Aes {
              */
         }
 
+        cryptedFile = aes.addRandomIv(cryptedFile, randomIv);
         aes.writeBytesToFile(cryptedFile, "./cbc-secret.jpg");
 
         /*
@@ -412,6 +416,15 @@ public class Aes {
         return res;
     }
 
+    public byte[] generateRandomIv(int length) {
+        byte[] res = new byte[length];
+        for (int i = 0; i < length; i++) {
+            Random random = new Random();
+            res[i] = (byte) random.nextInt(255);
+        }
+        return res;
+    }
+
     public void inv_pkcs5(String filename) {
         /* TODO */
     }
@@ -424,6 +437,13 @@ public class Aes {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public byte[] addRandomIv(byte[] bytes, byte[] iv) {
+        byte[] res = new byte[bytes.length + iv.length];
+        System.arraycopy(iv, 0, res, 0, iv.length);
+        System.arraycopy(bytes, 0, res, iv.length, bytes.length);
+        return res;
     }
 
 }
